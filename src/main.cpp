@@ -36,12 +36,12 @@ void setColor(int TrueColor)
 void testColors()
 {
   setColor(0x00C9CC);
-  delay(1000); 
+  delay(1000);
   setColor(0xF7788A);
-  delay(1000); 
+  delay(1000);
   setColor(0x34A853);
-  delay(1000); 
-  setColor(0x000000);  // off
+  delay(1000);
+  setColor(0x000000); // off
 }
 
 void whiteDuty(int D)
@@ -52,22 +52,29 @@ void whiteDuty(int D)
   analogWrite(PIN_WHITE, D);
 }
 
-int mesToInt(char symbol) {
-    if ('0' <= symbol && symbol <= '9') {
-        return symbol - '0';
-    } else if ('A' <= symbol && symbol <= 'F') {
-        return symbol - 'A' + 10;
-    } else if ('a' <= symbol && symbol <= 'f') {
-        return symbol - 'a' + 10;
-    }
-    return -1;
+int mesToInt(char symbol)
+{
+  if ('0' <= symbol && symbol <= '9')
+  {
+    return symbol - '0';
+  }
+  else if ('A' <= symbol && symbol <= 'F')
+  {
+    return symbol - 'A' + 10;
+  }
+  else if ('a' <= symbol && symbol <= 'f')
+  {
+    return symbol - 'a' + 10;
+  }
+  return -1;
 }
 
-int msgToColor(const char* mes) {
-    int r = (mesToInt(mes[1]) << 4) + mesToInt(mes[2]);
-    int g = (mesToInt(mes[3]) << 4) + mesToInt(mes[4]);
-    int b = (mesToInt(mes[5]) << 4) + mesToInt(mes[6]);
-    return (r << 16) + (g << 8) + b; // возвращаем в виде числа
+int msgToColor(const char *mes)
+{
+  int r = (mesToInt(mes[1]) << 4) + mesToInt(mes[2]);
+  int g = (mesToInt(mes[3]) << 4) + mesToInt(mes[4]);
+  int b = (mesToInt(mes[5]) << 4) + mesToInt(mes[6]);
+  return (r << 16) + (g << 8) + b; // возвращаем в виде числа
 }
 
 //========== обработка сообщений ===========
@@ -89,10 +96,11 @@ void newMsg(FB_msg &msg)
   //   ESP.restart();
   // }
 
-  else if (msg.text.startsWith("#")) {
+  else if (msg.text.startsWith("#"))
+  {
     bot.sendMessage("OK. Let's change the color", msg.chatID);
-     
-    Serial.println()
+
+    int tempo = msgToColor(msg.text); // сделать приведение типов к const char*
     // setColor(*msg);
   }
 
@@ -119,63 +127,63 @@ void newMsg(FB_msg &msg)
     bot.sendMessage(t.dateString(), msg.chatID);
   }
 
-  else if (msg.text.startsWith("Alarm"))
-  {
-    al_hour = msg.text.substring(6, 8).toInt();
-    delay(200);
-    Serial.println("al_hour: " + String(al_hour));
-    bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
-    delay(200);
-    al_minute = msg.text.substring(9, 11).toInt(); /* exe: alarm 09:45 */
-    Serial.println("al_minute: " + String(al_minute));
-    bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
+  // else if (msg.text.startsWith("Alarm"))
+  // {
+  //   al_hour = msg.text.substring(6, 8).toInt();
+  //   delay(200);
+  //   Serial.println("al_hour: " + String(al_hour));
+  //   bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
+  //   delay(200);
+  //   al_minute = msg.text.substring(9, 11).toInt(); /* exe: alarm 09:45 */
+  //   Serial.println("al_minute: " + String(al_minute));
+  //   bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
 
-    EEPROM.write(0, al_hour);
-    EEPROM.write(1, al_minute);
-    EEPROM.commit();
-    //  ===================== ДЛЯ ОТЛАДКИ =========================
-    // delay(1000);
-    // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
-    // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
-    //  ===========================================================
-  }
+  //   EEPROM.write(0, al_hour);
+  //   EEPROM.write(1, al_minute);
+  //   EEPROM.commit();
+  //   //  ===================== ДЛЯ ОТЛАДКИ =========================
+  //   // delay(1000);
+  //   // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
+  //   // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
+  //   //  ===========================================================
+  // }
 
-  else if (msg.text.startsWith("Duration"))
-  {
-    al_duration = msg.text.substring(9, 11).toInt(); /* exe: duration 15 */
-    delay(200);
-    Serial.println("al_duration: " + String(al_duration));
-    bot.sendMessage("al_duration: " + String(al_duration), msg.chatID);
+  // else if (msg.text.startsWith("Duration"))
+  // {
+  //   al_duration = msg.text.substring(9, 11).toInt(); /* exe: duration 15 */
+  //   delay(200);
+  //   Serial.println("al_duration: " + String(al_duration));
+  //   bot.sendMessage("al_duration: " + String(al_duration), msg.chatID);
 
-    EEPROM.write(2, al_duration);
-    EEPROM.commit();
-    //  ===================== ДЛЯ ОТЛАДКИ =========================
-    delay(1000);
-    Serial.println("EEPROM.read(2) = " + String(EEPROM.read(2)));
-    //  ===========================================================
-  }
+  //   EEPROM.write(2, al_duration);
+  //   EEPROM.commit();
+  //   //  ===================== ДЛЯ ОТЛАДКИ =========================
+  //   delay(1000);
+  //   Serial.println("EEPROM.read(2) = " + String(EEPROM.read(2)));
+  //   //  ===========================================================
+  // }
 
-  else if (msg.text.startsWith("Duty"))
-  {
-    al_duty = msg.text.substring(6, 8).toInt();
+  // else if (msg.text.startsWith("Duty"))
+  // {
+  //   al_duty = msg.text.substring(6, 8).toInt();
 
-    // delay(200);
-    // Serial.println("al_hour: " + String(al_hour));
-    // bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
-    // delay(200);
-    // al_minute = msg.text.substring(9, 11).toInt(); /* exe: Duty 153 */
-    // Serial.println("al_minute: " + String(al_minute));
-    // bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
+  //   // delay(200);
+  //   // Serial.println("al_hour: " + String(al_hour));
+  //   // bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
+  //   // delay(200);
+  //   // al_minute = msg.text.substring(9, 11).toInt(); /* exe: Duty 153 */
+  //   // Serial.println("al_minute: " + String(al_minute));
+  //   // bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
 
-    // EEPROM.write(0, al_hour);
-    // EEPROM.write(1, al_minute);
-    // EEPROM.commit();
-    //  ===================== ДЛЯ ОТЛАДКИ =========================
-    // delay(1000);
-    // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
-    // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
-    //  ===========================================================
-  }
+  //   // EEPROM.write(0, al_hour);
+  //   // EEPROM.write(1, al_minute);
+  //   // EEPROM.commit();
+  //   //  ===================== ДЛЯ ОТЛАДКИ =========================
+  //   // delay(1000);
+  //   // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
+  //   // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
+  //   //  ===========================================================
+  // }
 
   else if (msg.text.startsWith("Seton"))
   {

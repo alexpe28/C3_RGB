@@ -9,3 +9,4 @@
 #define CHAT_ID "-4180141360"
 
 uint32_t timer = 0;
+bool setMode;
