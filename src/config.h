@@ -7,3 +7,5 @@
 #define WIFI_PASS "Oocah7Aeghei"
 #define BOT_TOKEN "6750947968:AAF2gkOKxqrj9-_GIGxWNAZjpdh2QXHGVls"
 #define CHAT_ID "-4180141360"
+
+uint32_t timer = 0;

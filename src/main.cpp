@@ -1,161 +1,26 @@
 #include <Arduino.h>
 #include <config.h>
 #include <WiFi.h>
-#include <LittleFS.h>
-#include <FastBot2.h>
+#include <FastBot.h>
 
-FastBot2 bot;
+FastBot bot(BOT_TOKEN);
 
-// обработчик сырого json String пакета
-void rawh(const su::Text &s)
+void connectWiFi()
 {
-  // Serial.println(s);
-}
-
-// обработчик скачивания файлов (байтовый поток) из getFile
-void fetchh(Stream &s)
-{
-  Serial.println("got file:");
-  while (s.available())
-    Serial.print((char)s.read());
-  Serial.println();
-}
-
-// обработчик ответов сервера
-void responseh(gson::Entry &r)
-{
-  // сюда прилетает разобранный json объект "result:{}" с хешированными ключами!
-  // для доступа использовать хэши API, все доступны в fbh::api
-  // Serial.println(r[fbh::api::message_id]);
-  // Serial.println(r[fbh::api::text]);
-  // Serial.println(r[fbh::api::from][fbh::api::username]);
-
-  // можно узнать последнюю отправленную команду (результат её выполнения как раз в ответе сервера)
-  switch (bot.lastCmd())
+  delay(2000);
+  // Serial.begin(115200);
+  Serial.println("start");
+  // WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  timer = millis();
+  while (WiFi.status() != WL_CONNECTED)
   {
-  case fbh::cmd::sendMessage:
-    Serial.println("sendMessage");
-    break;
-  case fbh::cmd::sendDocument:
-    Serial.println("sendDocument");
-    break;
-  case fbh::cmd::editMessageMedia:
-    Serial.println("editMessageMedia");
-    break;
+    delay(500);
+    Serial.print(".");
+    if (millis() > 15000)
+      ESP.restart();
   }
-
-  // вывести в serial как json
-  // r.stringify(Serial);
-}
-
-void foo1(fb::Update &u)
-{
-  if (u.isMessage())
-  {
-    Serial.println(u.message().date());
-    Serial.println(u.message().text());
-    Serial.println(u.message().text().toString(true)); // decode unicode
-    Serial.println(u.message().from().username());
-
-    // эхо, вариант 1
-    // fb::Message msg;
-    // msg.text = (String)u.message().text();
-    // msg.chatID = u.message().chat().id();
-    // bot.sendMessage(msg);
-
-    // эхо, вариант 2
-    bot.sendMessage(fb::Message(u.message().text().toString(true), u.message().chat().id()));
-
-    // удалить сообщение юзера
-    // bot.deleteMessage(u.message().chat().id(), u.message().id());
-
-    // edit
-    // if (bot.lastBotMessage()) {
-    //     fb::TextEdit et;
-    //     et.text = u.message().text().toString();
-    //     et.chatID = u.message().chat().id();
-    //     et.messageID = bot.lastBotMessage();
-    //     bot.editText(et);
-    // } else {
-    //     bot.sendMessage(fb::Message(u.message().text(), u.message().chat().id()));
-    // }
-  }
-}
-void foo2(fb::Update &u)
-{
-  if (u.isMessage() && u.message().hasDocument())
-  {
-    if (u.message().document().name().endsWith(".bin"))
-    {
-      // .bin - значит это ОТА
-      bot.sendMessage(fb::Message("OTA begin", u.message().chat().id()), true);
-
-      // между downloadFile и updateFlash/updateFS/writeTo не должно быть отправки сообщений!
-      fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
-      if (fetch.updateFlash())
-      {
-        Serial.println("OTA done");
-        bot.sendMessage(fb::Message("OTA done", u.message().chat().id()), true);
-      }
-      else
-      {
-        Serial.println("OTA error");
-        bot.sendMessage(fb::Message("OTA error", u.message().chat().id()), true);
-      }
-    }
-    else
-    {
-      // это просто файл, выведем содержимое
-      fb::Fetcher fetch = bot.downloadFile(u.message().document().id());
-      // вывести в сериал
-      fetch.writeTo(Serial);
-      Serial.println();
-
-      // записать в файл
-      // File file = LittleFS.open("file.txt", "w");
-      // f.writeTo(file);
-    }
-  }
-}
-void foo3(fb::Update &u)
-{
-  if (u.isQuery())
-  {
-    Serial.println(u.query().data());
-
-    // ответ
-    // bot.answerCallbackQuery(u.query().id());
-    // bot.answerCallbackQuery(u.query().id(), "hello!");
-    bot.answerCallbackQuery(u.query().id(), "hello!", true, true);
-  }
-}
-void foo4(fb::Update &u)
-{
-  // =================== CUSTOM ===================
-  // полное определение типа обновления:
-  switch (u.type())
-  {
-  case fb::Update::Type::message:
-    break;
-  case fb::Update::Type::chatJoinRequest:
-    break;
-  default:
-    break;
-  }
-
-  // доступ к json пакету, здесь u.entry - api объект типа u.type()
-  // Например для сообщения:
-  // Serial.println(u.entry[fbh::api::from][fbh::api::username]);
-}
-
-// обработчик обновлений
-void updateh(fb::Update &u)
-{
-  // разбил на функции, чтобы не переполнять стек esp8266!
-  foo1(u);
-  foo2(u);
-  foo3(u);
-  foo4(u);
+  Serial.println("Connected");
 }
 
 void setColor(int TrueColor)
@@ -171,12 +36,12 @@ void setColor(int TrueColor)
 void testColors()
 {
   setColor(0x00C9CC);
-  delay(1000);
+  delay(1000); 
   setColor(0xF7788A);
-  delay(1000);
+  delay(1000); 
   setColor(0x34A853);
-  delay(1000);
-  setColor(0x000000); // off
+  delay(1000); 
+  setColor(0x000000);  // off
 }
 
 void whiteDuty(int D)
@@ -187,187 +52,158 @@ void whiteDuty(int D)
   analogWrite(PIN_WHITE, D);
 }
 
+int mesToInt(char symbol) {
+    if ('0' <= symbol && symbol <= '9') {
+        return symbol - '0';
+    } else if ('A' <= symbol && symbol <= 'F') {
+        return symbol - 'A' + 10;
+    } else if ('a' <= symbol && symbol <= 'f') {
+        return symbol - 'a' + 10;
+    }
+    return -1;
+}
+
+int msgToColor(const char* mes) {
+    int r = (mesToInt(mes[1]) << 4) + mesToInt(mes[2]);
+    int g = (mesToInt(mes[3]) << 4) + mesToInt(mes[4]);
+    int b = (mesToInt(mes[5]) << 4) + mesToInt(mes[6]);
+    return (r << 16) + (g << 8) + b; // возвращаем в виде числа
+}
+
+//========== обработка сообщений ===========
+
+// обработчик сообщений
+void newMsg(FB_msg &msg)
+{
+  // выводим всю информацию о сообщении
+  // Serial.println(msg.toString());
+
+  if (msg.text.endsWith("Ping"))
+  {
+    bot.sendMessage("I'm online!", msg.chatID);
+  }
+
+  // if (msg.text.endsWith("restart"))
+  // {
+  //   bot.sendMessage("OK. restart", msg.chatID);
+  //   ESP.restart();
+  // }
+
+  else if (msg.text.startsWith("#")) {
+    bot.sendMessage("OK. Let's change the color", msg.chatID);
+     
+    Serial.println()
+    // setColor(*msg);
+  }
+
+  // else if (msg.text.endsWith("led12")) {
+  //   bot.sendMessage("Led12 PWM go", msg.chatID);
+  //   fadeLed(LED12);
+  // }
+
+  // else if (msg.text.endsWith("sleep")) /* для отладки */
+  // {
+  //   bot.sendMessage("Ok. Going to sleep...", msg.chatID);
+  //   Serial.println("Ok. Going to sleep...");
+  // }
+
+  else if (msg.text.endsWith("Time"))
+  {
+    FB_Time t = bot.getTime(3);
+
+    Serial.print(t.timeString());
+    Serial.print(' ');
+    Serial.println(t.dateString());
+
+    bot.sendMessage(t.timeString(), msg.chatID);
+    bot.sendMessage(t.dateString(), msg.chatID);
+  }
+
+  else if (msg.text.startsWith("Alarm"))
+  {
+    al_hour = msg.text.substring(6, 8).toInt();
+    delay(200);
+    Serial.println("al_hour: " + String(al_hour));
+    bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
+    delay(200);
+    al_minute = msg.text.substring(9, 11).toInt(); /* exe: alarm 09:45 */
+    Serial.println("al_minute: " + String(al_minute));
+    bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
+
+    EEPROM.write(0, al_hour);
+    EEPROM.write(1, al_minute);
+    EEPROM.commit();
+    //  ===================== ДЛЯ ОТЛАДКИ =========================
+    // delay(1000);
+    // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
+    // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
+    //  ===========================================================
+  }
+
+  else if (msg.text.startsWith("Duration"))
+  {
+    al_duration = msg.text.substring(9, 11).toInt(); /* exe: duration 15 */
+    delay(200);
+    Serial.println("al_duration: " + String(al_duration));
+    bot.sendMessage("al_duration: " + String(al_duration), msg.chatID);
+
+    EEPROM.write(2, al_duration);
+    EEPROM.commit();
+    //  ===================== ДЛЯ ОТЛАДКИ =========================
+    delay(1000);
+    Serial.println("EEPROM.read(2) = " + String(EEPROM.read(2)));
+    //  ===========================================================
+  }
+
+  else if (msg.text.startsWith("Duty"))
+  {
+    al_duty = msg.text.substring(6, 8).toInt();
+
+    // delay(200);
+    // Serial.println("al_hour: " + String(al_hour));
+    // bot.sendMessage("al_hour: " + String(al_hour), msg.chatID);
+    // delay(200);
+    // al_minute = msg.text.substring(9, 11).toInt(); /* exe: Duty 153 */
+    // Serial.println("al_minute: " + String(al_minute));
+    // bot.sendMessage("al_minute: " + String(al_minute), msg.chatID);
+
+    // EEPROM.write(0, al_hour);
+    // EEPROM.write(1, al_minute);
+    // EEPROM.commit();
+    //  ===================== ДЛЯ ОТЛАДКИ =========================
+    // delay(1000);
+    // Serial.println("EEPROM.read(0) = " + String(EEPROM.read(0)));
+    // Serial.println("EEPROM.read(1) = " + String(EEPROM.read(1)));
+    //  ===========================================================
+  }
+
+  else if (msg.text.startsWith("Seton"))
+  {
+    setMode = true;
+    delay(200);
+    Serial.println("Setting Mode is ON");
+    bot.sendMessage("Setting Mode is ON", CHAT_ID);
+  }
+
+  else if (msg.text.startsWith("Setoff"))
+  {
+    setMode = false;
+    delay(200);
+    Serial.println("Setting Mode is OFF");
+    bot.sendMessage("Setting Mode is OFF", CHAT_ID);
+  }
+}
+
+//==========================================
+
 void setup()
 {
+  // Serial.begin(115200);
   pinMode(PIN_RED, OUTPUT);
   pinMode(PIN_GREEN, OUTPUT);
   pinMode(PIN_BLUE, OUTPUT);
-
-  Serial.begin(115200);
-  Serial.setTimeout(20);
-  Serial.println();
-  Serial.println("version 2");
-
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("Connected");
-
-  // attach
-    bot.attachUpdate(updateh);
-    bot.attachResult(responseh);
-    bot.attachRaw(rawh);
-    bot.attachFetch(fetchh);
-
-    // system
-    bot.setToken(F(BOT_TOKEN));
-    bot.skipUpdates();
-
-    // у 8266 можно уменьшить буфер клиента до минимума, его вполне хватает
-    // bot.client.setBufferSizes(512, 512);
-
-    // ============================
-    // выбор типа обновлений
-    // bot.updates.clearAll();
-    // bot.updates.set(fb::Updates::Type::Message | fb::Updates::Type::ChannelPost);
-
-    // ============================
-    // настройка режима опроса
-    // bot.setPollMode(fb::Poll::Sync, 4000);  // умолч
-    // bot.setPollMode(fb::Poll::Async, 4000);
-    bot.setPollMode(fb::Poll::Long, 10000);
-
-    // ============================
-    // настройки сообщений по умолчанию
-    // fb::Message::previewDefault = 1;
-    // fb::Message::notificationDefault = 1;
-    // fb::Message::protectDefault = 0;
-    // fb::Message::modeDefault = fb::Message::Mode::Text;
-
-    // ============================
-    // настройки меню по умолчанию
-    // fb::Menu::persistentDefault = 0;
-    // fb::Menu::resizeDefault = 0;
-    // fb::Menu::oneTimeDefault = 0;
-    // fb::Menu::selectiveDefault = 0;
-
-    // ============================
-    // отправка сообщения вручную. Начнём с команды
-    // fb::Packet p = bot.beginPacket(F("sendMessage"));   // как F-строка
-    // fb::Packet p = bot.beginPacket(fb::cmd::sendMessage);  // Все команды API Telegram доступны в fb::cmd
-
-    // p.addString(fb::api::text, "message text");  // все ключи объектов API Telegram доступны в fb::api
-    // p.addInt(fb::api::chat_id, CHAT_ID);
-    // bot.sendPacket(p);
-    // таким образом можно отправить любой API запрос
-
-    // ============================
-    // отправка нескольким ID
-    // fb::Message msg;
-    // msg.text = "hello!";
-
-    // su::TextParser ids("546343285;1234853;8796453678;38347567", ';');
-    // while (ids.parse()) {
-    //     msg.chatID = ids;
-    //     bot.sendMessage(msg);
-    // }
-
-    // ============================
-    // send+edit url gif
-    // fb::File f("file.txt", fb::File::Type::document, "https://compote.slate.com/images/697b023b-64a5-49a0-8059-27b963453fb1.gif");
-    // f.chatID = CHAT_ID;
-    // bot.sendFile(f, true);
-    // delay(2000);
-    // {
-    //     fb::FileEdit f("file.txt", fb::File::Type::document, "https://user-images.githubusercontent.com/14011726/94132137-7d4fc100-fe7c-11ea-8512-69f90cb65e48.gif");
-    //     f.messageID = bot.lastBotMessage();
-    //     f.chatID = CHAT_ID;
-    //     bot.editFile(f, true);
-    // }
-
-    // send+edit file
-    // char str[] = "hello text v1";
-    // fb::File f("file.txt", fb::File::Type::document, (uint8_t*)str, strlen(str));
-    // f.chatID = CHAT_ID;
-    // bot.sendFile(f, true);
-    // delay(5000);
-    // {
-    //     char str[] = "hello text v2";
-    //     fb::FileEdit f("file.txt", fb::File::Type::document, (uint8_t*)str, strlen(str));
-    //     f.messageID = bot.lastBotMessage();
-    //     f.chatID = CHAT_ID;
-    //     bot.editFile(f);
-    // }
-
-    // file from fs
-    // LittleFS.begin();
-    // File file = LittleFS.open("/image.jpg", "r");
-    // fb::File f("file.txt", fb::File::Type::photo, file);
-    // f.chatID = CHAT_ID;
-    // bot.sendFile(f, true);
-
-    // bot.sendMessage(fb::Message("Привет", CHAT_ID));
-
-    // setMyCommands v1
-    // fb::Packet p = bot.beginPacket(fb::cmd::setMyCommands);
-    // p.beginArr(fb::api::commands);
-    // p.addText(R"(
-    //     {"command":"help","description":"Помощь по командам"},
-    //     {"command":"info","description":"Информация о настройках"},
-    //     {"command":"status","description":"Показания датчиков"},
-    //     {"command":"restart","description":"Перезагрзка контроллера"}
-    // )");
-    // p.endArr();
-    // bot.sendPacket(p);
-
-    // setMyCommands v2
-    // fb::Packet p = bot.beginPacket(fb::cmd::setMyCommands);
-    // p.beginArr(fb::api::commands);
-    // p.beginObj().addString(fb::api::command, "help").addString(fb::api::description, "Помощь по командам").endObj();
-    // p.beginObj().addString(fb::api::command, "info").addString(fb::api::description, "Информация о настройках").endObj();
-    // p.endArr();
-    // bot.sendPacket(p);
 }
 
 void loop()
 {
-  // тикаем в loop!
-    bot.tick();
-    if (bot.canReboot()) ESP.restart();
-
-    // отправка сообщения текстом из Serial
-    if (Serial.available()) {
-        // сообщение, вариант 1
-        fb::Message msg(Serial.readString(), CHAT_ID);
-
-        // =============================
-        // сообщение, вариант 2
-        // fb::Message msg;
-        // msg.text = Serial.readString();
-        // msg.chatID = CHAT_ID;
-
-        // =============================
-        // меню, вариант 1
-        // fb::Menu menu;
-        // menu.text = "kek 1 ; kek 2 ; kek 3 \n kek 4 ; kek 5";
-        // menu.resize = 1;
-        // menu.placeholder = "Fancy placeholder";
-        // msg.setMenu(menu);
-
-        // =============================
-        // меню, вариант 2
-        // fb::Menu menu;
-        // menu.addButton("kek 1").addButton("kek 2").newRow();
-        // menu.addButton("kek 3");
-        // msg.setMenu(menu);
-
-        // =============================
-        // inline menu, вариант 1
-        fb::InlineMenu menu("kek 1 ; kek 2 ; kek 3 \n kek 4 ; kek 5", "test;pest;lol;https://www.google.ru/;https://www.yandex.ru/");
-        msg.setInlineMenu(menu);
-
-        // =============================
-        // inline menu, вариант 2
-        // fb::InlineMenu menu;
-        // menu.addButton("BUTTON 1");  // data == text
-        // menu.addButton("BUTTON 2", "data_2");
-        // menu.newRow();
-        // menu.addButton("BUTTON 3", "https://www.google.ru/");
-        // msg.setInlineMenu(menu);
-
-        bot.sendMessage(msg);
-    }
 }
